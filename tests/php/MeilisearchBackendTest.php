@@ -95,6 +95,19 @@ class MeilisearchBackendTest extends SapphireTest
         $this->assertArrayNotHasKey('ignored', $map, 'single-term lines are skipped');
     }
 
+    public function testSuggestReturnsTopProductsInRankOrder(): void
+    {
+        $a = Product::create(['Title' => 'A', 'BasePrice' => 1]);
+        $a->write();
+        $b = Product::create(['Title' => 'B', 'BasePrice' => 1]);
+        $b->write();
+
+        $backend = (new MeilisearchBackend())->setClient(new FakeMeiliClient([['id' => $b->ID], ['id' => $a->ID]]));
+
+        $this->assertSame([$b->ID, $a->ID], $backend->suggest('x')->column('ID'));
+        $this->assertCount(0, $backend->suggest(''), 'empty terms = no suggestions');
+    }
+
     public function testNameAndCapabilities(): void
     {
         $backend = new MeilisearchBackend();

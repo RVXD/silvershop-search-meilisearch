@@ -36,6 +36,9 @@ class MeilisearchBackend implements SearchBackend
     /** Max ranked hits fetched per query (the controller paginates this window). */
     private static int $result_window = 1000;
 
+    /** Default number of suggestions returned by the instant-search endpoint. */
+    private static int $instant_limit = 8;
+
     /** Document fields searched for free text, highest-weighted first (Meilisearch ranks by this order). */
     private static array $searchable_attributes = ['Title', 'InternalItemID', 'Model', 'Content'];
 
@@ -83,6 +86,29 @@ class MeilisearchBackend implements SearchBackend
             : $this->applySort($products, $query->sort);
 
         return new SearchResults($hits, $hits->count(), $applied['facets']);
+    }
+
+    /**
+     * Top matches for instant-search / autocomplete: a quick Meili text match (no facets), products in rank order.
+     */
+    public function suggest(string $terms, ?int $limit = null): SS_List
+    {
+        if (trim($terms) === '') {
+            return ArrayList::create();
+        }
+
+        $limit = $limit ?? (int) self::config()->get('instant_limit');
+        $response = $this->client()->search([
+            'q' => $terms,
+            'limit' => max(1, $limit),
+            'attributesToRetrieve' => ['id'],
+        ]);
+        $ids = array_values(array_filter(array_map(
+            static fn ($hit): int => (int) ($hit['id'] ?? 0),
+            $response['hits'] ?? []
+        )));
+
+        return $this->rankOrder(Product::get()->filter('ID', $ids ?: [0]), $ids);
     }
 
     public function index(SS_List $products): void

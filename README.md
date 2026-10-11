@@ -112,10 +112,25 @@ SilverShop\Search\Meilisearch\MeilisearchBackend:
 (e.g. `tv, television, telly`). Every term in a group matches the others. Saving pushes them to Meilisearch
 immediately — no reindex needed.
 
+## Instant search (autocomplete)
+
+A JSON endpoint for typeahead lives at `/<your search page>/instant?q=…` (e.g. `/search/instant?q=tshi`). It returns
+the top matches fast, for a theme to render a suggestions dropdown:
+
+```json
+{"query":"tshi","results":[{"title":"T-Shirt","link":"/shop/apparel/t-shirt/","price":"$25.00","image":"/…"}]}
+```
+
+Limit via config:
+
+```yaml
+SilverShop\Search\Meilisearch\MeilisearchBackend:
+  instant_limit: 8
+```
+
 ## Roadmap
 
 - Native Meilisearch `facetDistribution` (a performance optimisation for very large catalogs).
-- Optional instant-search JSON endpoint for the theme.
 
 ## License
 

@@ -17,3 +17,8 @@ SilverShop\Page\Product:
 SilverStripe\SiteConfig\SiteConfig:
   extensions:
     - SilverShop\Search\Meilisearch\SearchConfigExtension
+
+# Instant-search JSON endpoint at /<search-page>/instant?q=…
+SilverShop\Search\SearchPageController:
+  extensions:
+    - SilverShop\Search\Meilisearch\InstantSearchExtension
