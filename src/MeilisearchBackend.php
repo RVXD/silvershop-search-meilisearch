@@ -15,6 +15,7 @@ use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Model\List\SS_List;
 use SilverStripe\ORM\DataList;
+use SilverStripe\SiteConfig\SiteConfig;
 
 /**
  * Meilisearch-backed {@link SearchBackend}: typo-tolerant, relevance-ranked product search.
@@ -35,11 +36,8 @@ class MeilisearchBackend implements SearchBackend
     /** Max ranked hits fetched per query (the controller paginates this window). */
     private static int $result_window = 1000;
 
-    /** Document fields searched for free text, highest-weighted first. */
-    private const SEARCHABLE = ['Title', 'InternalItemID', 'Model', 'Content'];
-
-    /** Document fields available to sort on. */
-    private const SORTABLE = ['BasePrice', 'CreatedTimestamp', 'Title'];
+    /** Document fields searched for free text, highest-weighted first (Meilisearch ranks by this order). */
+    private static array $searchable_attributes = ['Title', 'InternalItemID', 'Model', 'Content'];
 
     private ?MeiliClient $client = null;
 
@@ -109,10 +107,34 @@ class MeilisearchBackend implements SearchBackend
     public function pushSettings(): void
     {
         $this->client()->updateSettings([
-            'searchableAttributes' => self::SEARCHABLE,
-            'sortableAttributes' => self::SORTABLE,
+            'searchableAttributes' => array_values((array) self::config()->get('searchable_attributes')),
             'displayedAttributes' => ['id'],
+            'synonyms' => $this->synonyms(),
         ]);
+    }
+
+    /**
+     * CMS-managed synonyms (SiteConfig.SearchSynonyms) as a Meilisearch synonym map. One group per line,
+     * comma-separated; every term in a group becomes a mutual synonym of the others.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function synonyms(): array
+    {
+        $raw = (string) SiteConfig::current_site_config()->SearchSynonyms;
+        $map = [];
+        foreach (preg_split('/\r\n|\r|\n/', $raw) ?: [] as $line) {
+            $terms = array_values(array_filter(array_map('trim', explode(',', $line)), 'strlen'));
+            if (count($terms) < 2) {
+                continue;
+            }
+            $lower = array_map('mb_strtolower', $terms);
+            foreach ($lower as $term) {
+                $map[$term] = array_values(array_diff($lower, [$term]));
+            }
+        }
+
+        return $map;
     }
 
     public function supportsTypoTolerance(): bool

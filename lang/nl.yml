@@ -1,0 +1,6 @@
+nl:
+  SilverShop\Search\Meilisearch\MeilisearchBackend:
+    TITLE: 'Meilisearch'
+  SilverShop\Search\Meilisearch\SearchConfigExtension:
+    SearchSynonyms: 'Zoeksynoniemen'
+    SearchSynonymsDesc: 'Eén groep per regel, komma-gescheiden — elke term in een groep komt overeen met de andere (bijv. "tv, televisie, buis"). Gebruikt door de Meilisearch-zoekbackend.'

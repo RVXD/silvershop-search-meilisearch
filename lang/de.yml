@@ -1,0 +1,6 @@
+de:
+  SilverShop\Search\Meilisearch\MeilisearchBackend:
+    TITLE: 'Meilisearch'
+  SilverShop\Search\Meilisearch\SearchConfigExtension:
+    SearchSynonyms: 'Such-Synonyme'
+    SearchSynonymsDesc: 'Eine Gruppe pro Zeile, kommagetrennt — jeder Begriff einer Gruppe passt auf die anderen (z. B. „TV, Fernseher, Glotze"). Vom Meilisearch-Suchbackend verwendet.'

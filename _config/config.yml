@@ -12,3 +12,8 @@ SilverShop\Search\Backend\BackendRegistry:
 SilverShop\Page\Product:
   extensions:
     - SilverShop\Search\Meilisearch\ProductSyncExtension
+
+# CMS-editable search synonyms.
+SilverStripe\SiteConfig\SiteConfig:
+  extensions:
+    - SilverShop\Search\Meilisearch\SearchConfigExtension

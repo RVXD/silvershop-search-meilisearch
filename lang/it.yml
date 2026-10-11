@@ -1,0 +1,6 @@
+it:
+  SilverShop\Search\Meilisearch\MeilisearchBackend:
+    TITLE: 'Meilisearch'
+  SilverShop\Search\Meilisearch\SearchConfigExtension:
+    SearchSynonyms: 'Sinonimi di ricerca'
+    SearchSynonymsDesc: 'Un gruppo per riga, separati da virgole — ogni termine di un gruppo corrisponde agli altri (es. "tv, televisione, tele"). Usato dal backend di ricerca Meilisearch.'

@@ -7,6 +7,7 @@ use SilverShop\Search\Meilisearch\MeilisearchBackend;
 use SilverShop\Search\Query\SearchQuery;
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\Model\List\ArrayList;
+use SilverStripe\SiteConfig\SiteConfig;
 
 class MeilisearchBackendTest extends SapphireTest
 {
@@ -78,6 +79,20 @@ class MeilisearchBackendTest extends SapphireTest
 
         $backend->remove((int) $product->ID);
         $this->assertSame([$product->ID], $fake->deleted);
+    }
+
+    public function testSynonymsParseIntoAMutualMeiliMap(): void
+    {
+        $config = SiteConfig::current_site_config();
+        $config->SearchSynonyms = "tv, television, telly\nlaptop, notebook\nignored";
+        $config->write();
+
+        $map = (new MeilisearchBackend())->synonyms();
+
+        $this->assertSame(['television', 'telly'], $map['tv']);
+        $this->assertSame(['tv', 'telly'], $map['television']);
+        $this->assertSame(['notebook'], $map['laptop']);
+        $this->assertArrayNotHasKey('ignored', $map, 'single-term lines are skipped');
     }
 
     public function testNameAndCapabilities(): void

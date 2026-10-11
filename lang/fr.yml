@@ -1,0 +1,6 @@
+fr:
+  SilverShop\Search\Meilisearch\MeilisearchBackend:
+    TITLE: 'Meilisearch'
+  SilverShop\Search\Meilisearch\SearchConfigExtension:
+    SearchSynonyms: 'Synonymes de recherche'
+    SearchSynonymsDesc: 'Un groupe par ligne, séparés par des virgules — chaque terme d''un groupe correspond aux autres (p. ex. « tv, télévision, télé »). Utilisé par le moteur de recherche Meilisearch.'

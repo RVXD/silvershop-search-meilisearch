@@ -54,10 +54,24 @@ All registered facets (category / price / brand / rating / colour / attributes /
 Meilisearch backend: Meili does the typo-tolerant text match + ranking, then `silvershop/search`'s facet framework
 applies the selected filters and counts options over the matched products. No per-facet configuration needed.
 
+## Relevance & synonyms
+
+**Field weighting** — free-text matches rank by field importance: `Title`, then SKU (`InternalItemID`), `Model`,
+`Content`. Reorder via config:
+
+```yaml
+SilverShop\Search\Meilisearch\MeilisearchBackend:
+  searchable_attributes: [Title, InternalItemID, Model, Content]
+```
+
+**Synonyms** — edit them in the CMS at **Settings → Shop → Search synonyms**: one group per line, comma-separated
+(e.g. `tv, television, telly`). Every term in a group matches the others. Saving pushes them to Meilisearch
+immediately — no reindex needed.
+
 ## Roadmap
 
 - Native Meilisearch `facetDistribution` (a performance optimisation for very large catalogs).
-- Synonyms (CMS-editable), searchable-attribute weighting tuning, optional instant-search JSON endpoint.
+- Optional instant-search JSON endpoint for the theme.
 
 ## License
 

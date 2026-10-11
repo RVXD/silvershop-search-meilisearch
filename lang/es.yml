@@ -1,0 +1,6 @@
+es:
+  SilverShop\Search\Meilisearch\MeilisearchBackend:
+    TITLE: 'Meilisearch'
+  SilverShop\Search\Meilisearch\SearchConfigExtension:
+    SearchSynonyms: 'Sinónimos de búsqueda'
+    SearchSynonymsDesc: 'Un grupo por línea, separados por comas — cada término de un grupo coincide con los demás (p. ej. "tv, televisión, tele"). Lo usa el backend de búsqueda Meilisearch.'
