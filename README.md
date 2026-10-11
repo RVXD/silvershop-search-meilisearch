@@ -48,10 +48,15 @@ Run `dev/build?flush=1` first so the config + extension load.
   speed out of the box — the gaps the DB backend has.
 - A search-engine outage never blocks publishing (sync is guarded); run the reindex task to repair any drift.
 
+## Facets
+
+All registered facets (category / price / brand / rating / colour / attributes / stock) work unchanged with the
+Meilisearch backend: Meili does the typo-tolerant text match + ranking, then `silvershop/search`'s facet framework
+applies the selected filters and counts options over the matched products. No per-facet configuration needed.
+
 ## Roadmap
 
-- **Facets** (next slice): map the registered facets (category / price / brand / rating / colour / attributes) to
-  Meilisearch `filterableAttributes` + `facetDistribution`.
+- Native Meilisearch `facetDistribution` (a performance optimisation for very large catalogs).
 - Synonyms (CMS-editable), searchable-attribute weighting tuning, optional instant-search JSON endpoint.
 
 ## License

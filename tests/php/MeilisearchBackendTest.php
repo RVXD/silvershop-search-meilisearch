@@ -34,18 +34,7 @@ class MeilisearchBackendTest extends SapphireTest
         $this->assertEqualsWithDelta(19.95, $doc['BasePrice'], 0.001);
     }
 
-    public function testSortMapping(): void
-    {
-        $backend = new MeilisearchBackend();
-
-        $this->assertSame(['BasePrice:asc'], $backend->sortFor('price_asc'));
-        $this->assertSame(['BasePrice:desc'], $backend->sortFor('price_desc'));
-        $this->assertSame(['CreatedTimestamp:desc'], $backend->sortFor('newest'));
-        $this->assertSame(['Title:asc'], $backend->sortFor('title'));
-        $this->assertSame([], $backend->sortFor(''), 'empty sort = relevance');
-    }
-
-    public function testQueryReturnsProductsInMeiliRankOrder(): void
+    public function testQueryReturnsProductsInMeiliRankOrderWithFacets(): void
     {
         $a = Product::create(['Title' => 'A', 'BasePrice' => 1]);
         $a->write();
@@ -59,8 +48,20 @@ class MeilisearchBackendTest extends SapphireTest
         $results = $backend->query(new SearchQuery(terms: 'anything'));
 
         $this->assertSame([$c->ID, $a->ID], $results->hits->column('ID'), 'rank order preserved');
+        $this->assertSame(2, $results->total, 'B is excluded (not matched by Meili)');
+        $this->assertContains('price', array_column($results->facets, 'name'), 'facets come from the framework');
+    }
+
+    public function testBrowseWithoutTermsReturnsAllProducts(): void
+    {
+        Product::create(['Title' => 'A', 'BasePrice' => 1])->write();
+        Product::create(['Title' => 'B', 'BasePrice' => 1])->write();
+
+        // No terms → no Meili call; the full catalogue is faceted via the framework.
+        $results = (new MeilisearchBackend())->setClient(new FakeMeiliClient())->query(new SearchQuery());
+
         $this->assertSame(2, $results->total);
-        $this->assertSame([], $results->facets, 'facets are a later slice');
+        $this->assertNotEmpty($results->facets);
     }
 
     public function testIndexAndRemoveCallTheClient(): void

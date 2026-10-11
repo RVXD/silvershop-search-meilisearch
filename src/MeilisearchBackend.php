@@ -6,6 +6,7 @@ namespace SilverShop\Search\Meilisearch;
 
 use SilverShop\Page\Product;
 use SilverShop\Search\Backend\SearchBackend;
+use SilverShop\Search\Facet\FacetApplier;
 use SilverShop\Search\Query\SearchQuery;
 use SilverShop\Search\Query\SearchResults;
 use SilverStripe\Core\Config\Configurable;
@@ -13,13 +14,16 @@ use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Model\List\SS_List;
+use SilverStripe\ORM\DataList;
 
 /**
  * Meilisearch-backed {@link SearchBackend}: typo-tolerant, relevance-ranked product search.
  *
- * Products are indexed (by {@link index()} / the reindex task / {@link ProductSyncExtension}); queries hit Meilisearch
- * and return the matching products in Meili's rank order as an {@link ArrayList}, which the SearchPage controller then
- * paginates (no change needed in silvershop/search). Facet mapping arrives in a later slice; for now facets are empty.
+ * Products are indexed (by {@link index()} / the reindex task / {@link ProductSyncExtension}); a query lets Meilisearch
+ * do the typo-tolerant text match + relevance ranking, then reuses silvershop/search's {@link FacetApplier} to apply
+ * the selected facets and count their options over the matched set — so every registered facet works, unchanged, with
+ * no per-facet engine mapping. Results come back in Meili's rank order (for relevance) and the SearchPage controller
+ * paginates them (no change needed in silvershop/search). Native Meili facetDistribution is a later optimisation.
  */
 class MeilisearchBackend implements SearchBackend
 {
@@ -63,24 +67,24 @@ class MeilisearchBackend implements SearchBackend
 
     public function query(SearchQuery $query): SearchResults
     {
-        $body = [
-            'q' => $query->terms,
-            'limit' => max(1, (int) self::config()->get('result_window')),
-            'attributesToRetrieve' => ['id'],
-        ];
-        if ($sort = $this->sortFor($query->sort)) {
-            $body['sort'] = $sort;
+        // Meilisearch matches the free text (typo-tolerant, ranked); facet filtering + counts reuse the framework.
+        if ($query->hasTerms()) {
+            $rankedIds = $this->matchIds($query->terms);
+            $base = Product::get()->filter('ID', $rankedIds ?: [0]);
+        } else {
+            $rankedIds = [];
+            $base = Product::get();
         }
 
-        $response = $this->client()->search($body);
-        $ids = array_values(array_filter(array_map(
-            static fn ($hit): int => (int) ($hit['id'] ?? 0),
-            $response['hits'] ?? []
-        )));
+        $applied = FacetApplier::apply($base, $query);
+        $products = $applied['products'];
 
-        $hits = $this->productsInRankOrder($ids);
+        // Keep Meili's relevance order for a text search with no explicit sort; otherwise sort in the ORM.
+        $hits = ($query->hasTerms() && $query->sort === '')
+            ? $this->rankOrder($products, $rankedIds)
+            : $this->applySort($products, $query->sort);
 
-        return new SearchResults($hits, $hits->count(), []);
+        return new SearchResults($hits, $hits->count(), $applied['facets']);
     }
 
     public function index(SS_List $products): void
@@ -143,36 +147,46 @@ class MeilisearchBackend implements SearchBackend
     }
 
     /**
-     * @return array<int, string> Meilisearch sort expressions (empty = relevance).
+     * @return array<int, int> Meili-ranked product ids for the free-text terms.
      */
-    public function sortFor(string $sort): array
+    private function matchIds(string $terms): array
+    {
+        $response = $this->client()->search([
+            'q' => $terms,
+            'limit' => max(1, (int) self::config()->get('result_window')),
+            'attributesToRetrieve' => ['id'],
+        ]);
+
+        return array_values(array_filter(array_map(
+            static fn ($hit): int => (int) ($hit['id'] ?? 0),
+            $response['hits'] ?? []
+        )));
+    }
+
+    private function applySort(DataList $products, string $sort): DataList
     {
         return match ($sort) {
-            'price_asc' => ['BasePrice:asc'],
-            'price_desc' => ['BasePrice:desc'],
-            'newest' => ['CreatedTimestamp:desc'],
-            'title' => ['Title:asc'],
-            default => [],
+            'price_asc' => $products->sort('BasePrice', 'ASC'),
+            'price_desc' => $products->sort('BasePrice', 'DESC'),
+            'newest' => $products->sort('Created', 'DESC'),
+            'title' => $products->sort('Title', 'ASC'),
+            default => $products,
         };
     }
 
     /**
-     * Fetch the (still-published) products for the given ids, preserving the Meilisearch rank order.
+     * Order the facet-filtered products by the Meilisearch rank.
      *
-     * @param array<int, int> $ids
+     * @param array<int, int> $rankedIds
      */
-    public function productsInRankOrder(array $ids): ArrayList
+    private function rankOrder(DataList $products, array $rankedIds): ArrayList
     {
-        $list = ArrayList::create();
-        if (!$ids) {
-            return $list;
-        }
-
         $byID = [];
-        foreach (Product::get()->filter('ID', $ids) as $product) {
+        foreach ($products as $product) {
             $byID[(int) $product->ID] = $product;
         }
-        foreach ($ids as $id) {
+        $list = ArrayList::create();
+        foreach ($rankedIds as $id) {
             if (isset($byID[$id])) {
                 $list->push($byID[$id]);
             }
