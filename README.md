@@ -7,7 +7,51 @@ search, as a drop-in replacement for the built-in database backend.
 ## Requirements
 
 - `silvershop/search` `^1` (the search framework)
-- A reachable **Meilisearch** server (self-hosted — a single binary; see their docs)
+- A reachable **Meilisearch** server (self-hosted — a single binary)
+
+## Running Meilisearch
+
+Meilisearch is a single binary — download it ([docs](https://www.meilisearch.com/docs/learn/getting_started/installation)):
+
+```bash
+curl -L https://install.meilisearch.com | sh   # downloads ./meilisearch
+```
+
+For anything beyond a quick local test, run it under systemd. A system service (`/etc/systemd/system/meilisearch.service`):
+
+```ini
+[Unit]
+Description=Meilisearch
+After=network.target
+
+[Service]
+Type=simple
+User=meilisearch
+Environment=MEILI_MASTER_KEY=change-me-to-a-long-random-key
+Environment=MEILI_ENV=production
+Environment=MEILI_DB_PATH=/var/lib/meilisearch/data
+Environment=MEILI_HTTP_ADDR=127.0.0.1:7700
+ExecStart=/usr/local/bin/meilisearch
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now meilisearch
+```
+
+No root? A **per-user** service works too — put the unit in `~/.config/systemd/user/meilisearch.service` (use `%h/...`
+paths and `ExecStart=%h/meilisearch`), then:
+
+```bash
+systemctl --user enable --now meilisearch
+sudo loginctl enable-linger "$USER"   # one-time: start it at boot without logging in
+```
+
+Keep Meilisearch bound to localhost (behind your app) and use a long random `MEILI_MASTER_KEY` in production.
 
 ## Installation
 
