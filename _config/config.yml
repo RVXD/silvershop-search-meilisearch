@@ -1,0 +1,14 @@
+---
+Name: silvershop-search-meilisearch
+After:
+  - '#silvershop-search'
+---
+# Register the Meilisearch backend. Set `active_backend: meilisearch` (and SS_MEILISEARCH_HOST/_KEY) to use it.
+SilverShop\Search\Backend\BackendRegistry:
+  backends:
+    meilisearch: '%$SilverShop\Search\Meilisearch\MeilisearchBackend'
+
+# Keep the product index in sync on publish / unpublish / delete.
+SilverShop\Page\Product:
+  extensions:
+    - SilverShop\Search\Meilisearch\ProductSyncExtension
