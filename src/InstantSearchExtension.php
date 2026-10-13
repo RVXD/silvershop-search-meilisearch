@@ -90,9 +90,9 @@ class InstantSearchExtension extends Extension
     {
         try {
             if ($product->hasField('BrandID') && (int) $product->getField('BrandID') > 0) {
-                $brand = $product->Brand();
-                if ($brand && $brand->exists()) {
-                    return (string) $brand->Title;
+                $brand = $product->getComponent('Brand');
+                if ($brand->exists()) {
+                    return (string) $brand->getField('Title');
                 }
             }
         } catch (\Throwable $e) {
