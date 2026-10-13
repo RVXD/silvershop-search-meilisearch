@@ -112,6 +112,18 @@ SilverShop\Search\Meilisearch\MeilisearchBackend:
 (e.g. `tv, television, telly`). Every term in a group matches the others. Saving pushes them to Meilisearch
 immediately — no reindex needed.
 
+**Typo tolerance** — the minimum word length before a typo is tolerated. Meilisearch's own defaults (`oneTypo` 5,
+`twoTypos` 9) give short terms zero tolerance, so a 4-letter query like `iPad` would never reach `iPod`. The module
+lowers the one-typo threshold to **4** so short-word typos match. Tune per key via config (run the reindex task, or
+re-save synonyms, to push it):
+
+```yaml
+SilverShop\Search\Meilisearch\MeilisearchBackend:
+  min_word_size_for_typos:
+    oneTypo: 4
+    twoTypos: 7
+```
+
 ## Instant search (autocomplete)
 
 A JSON endpoint for typeahead lives at `/<your search page>/instant?q=…` (e.g. `/search/instant?q=tshi`). It returns

@@ -42,6 +42,18 @@ class MeilisearchBackend implements SearchBackend
     /** Document fields searched for free text, highest-weighted first (Meilisearch ranks by this order). */
     private static array $searchable_attributes = ['Title', 'InternalItemID', 'Model', 'Content'];
 
+    /**
+     * Minimum word length before Meilisearch tolerates typos. Meili's own defaults (oneTypo 5, twoTypos 9) give
+     * short terms like "iPad" zero typo tolerance, so a 4-letter query never reaches "iPod" (a one-character typo).
+     * Lowering oneTypo to 4 makes short-word typos match. Config-overridable per key.
+     *
+     * @var array<string, int>
+     */
+    private static array $min_word_size_for_typos = [
+        'oneTypo' => 4,
+        'twoTypos' => 7,
+    ];
+
     private ?MeiliClient $client = null;
 
     public function setClient(MeiliClient $client): static
@@ -136,7 +148,26 @@ class MeilisearchBackend implements SearchBackend
             'searchableAttributes' => array_values((array) self::config()->get('searchable_attributes')),
             'displayedAttributes' => ['id'],
             'synonyms' => $this->synonyms(),
+            'typoTolerance' => $this->typoTolerance(),
         ]);
+    }
+
+    /**
+     * Typo-tolerance settings pushed to the index: the minimum word length before one/two typos are tolerated.
+     * The default (oneTypo 4) lets a 4-letter term like "iPad" match a one-character typo such as "iPod".
+     *
+     * @return array<string, array<string, int>>
+     */
+    public function typoTolerance(): array
+    {
+        $sizes = (array) self::config()->get('min_word_size_for_typos');
+
+        return [
+            'minWordSizeForTypos' => [
+                'oneTypo' => (int) ($sizes['oneTypo'] ?? 4),
+                'twoTypos' => (int) ($sizes['twoTypos'] ?? 7),
+            ],
+        ];
     }
 
     /**
@@ -150,7 +181,10 @@ class MeilisearchBackend implements SearchBackend
         $raw = (string) SiteConfig::current_site_config()->SearchSynonyms;
         $map = [];
         foreach (preg_split('/\r\n|\r|\n/', $raw) ?: [] as $line) {
-            $terms = array_values(array_filter(array_map('trim', explode(',', $line)), 'strlen'));
+            $terms = array_values(array_filter(
+                array_map('trim', explode(',', $line)),
+                static fn (string $term): bool => $term !== ''
+            ));
             if (count($terms) < 2) {
                 continue;
             }

@@ -108,6 +108,37 @@ class MeilisearchBackendTest extends SapphireTest
         $this->assertCount(0, $backend->suggest(''), 'empty terms = no suggestions');
     }
 
+    public function testPushSettingsIncludesShortWordTypoTolerance(): void
+    {
+        $fake = new FakeMeiliClient();
+        (new MeilisearchBackend())->setClient($fake)->pushSettings();
+
+        $this->assertNotNull($fake->settings);
+        $this->assertSame(
+            ['oneTypo' => 4, 'twoTypos' => 7],
+            $fake->settings['typoTolerance']['minWordSizeForTypos'],
+            'oneTypo=4 is pushed so 4-letter terms like "iPad" tolerate a one-character typo'
+        );
+        $this->assertSame(
+            ['Title', 'InternalItemID', 'Model', 'Content'],
+            $fake->settings['searchableAttributes'],
+            'searchable attributes / ranking stay intact'
+        );
+    }
+
+    public function testTypoToleranceIsConfigOverridable(): void
+    {
+        MeilisearchBackend::config()->set('min_word_size_for_typos', ['oneTypo' => 3, 'twoTypos' => 6]);
+
+        $fake = new FakeMeiliClient();
+        (new MeilisearchBackend())->setClient($fake)->pushSettings();
+
+        $this->assertSame(
+            ['oneTypo' => 3, 'twoTypos' => 6],
+            $fake->settings['typoTolerance']['minWordSizeForTypos']
+        );
+    }
+
     public function testNameAndCapabilities(): void
     {
         $backend = new MeilisearchBackend();
